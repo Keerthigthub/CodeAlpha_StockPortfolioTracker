@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Dashboard - Stock Portfolio Tracker</title>
+
+    <!-- BOOTSTRAP -->
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- CSS -->
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- CHART JS -->
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+
+<nav class="navbar navbar-expand-lg">
+
+    <div class="container-fluid">
+
+        <a class="navbar-brand" href="#">
+            📈 Stock Portfolio Tracker
+        </a>
+
+        <button onclick="toggleDarkMode()" class="btn btn-dark">
+            🌙 Dark Mode
+        </button>
+
+    </div>
+
+</nav>
+
+<!-- HERO -->
+
+<div class="hero-section">
+
+    <h1>
+        Portfolio Analytics
+    </h1>
+
+    <p>
+        Live overview of your investments and performance.
+    </p>
+
+</div>
+
+<!-- MAIN -->
+
+<div class="main-container">
+
+    <!-- SUMMARY CARDS -->
+
+    <div class="row g-4">
+
+        <!-- TOTAL INVESTMENT -->
+
+        <div class="col-md-4">
+
+            <div class="card card-blue p-4">
+
+                <div class="d-flex justify-content-between align-items-center">
+
+                    <span>
+                        💰 Total Investment
+                    </span>
+
+                    <span>
+                        📊
+                    </span>
+
+                </div>
+
+                <h2 class="mt-4">
+                    ${{ total_value }}
+                </h2>
+
+            </div>
+
+        </div>
+
+        <!-- PROFIT LOSS -->
+
+        <div class="col-md-4">
+
+            <div class="card card-green p-4">
+
+                <div class="d-flex justify-content-between align-items-center">
+
+                    <span>
+                        📈 Total Profit/Loss
+                    </span>
+
+                    <span>
+                        🚀
+                    </span>
+
+                </div>
+
+                <h2 class="mt-4">
+
+                    {% if total_profit >= 0 %}
+
+                        +${{ total_profit }}
+
+                    {% else %}
+
+                        -${{ total_profit }}
+
+                    {% endif %}
+
+                </h2>
+
+            </div>
+
+        </div>
+
+        <!-- BEST STOCK -->
+
+        <div class="col-md-4">
+
+            <div class="card card-orange p-4">
+
+                <div class="d-flex justify-content-between align-items-center">
+
+                    <span>
+                        🏆 Best Performing Stock
+                    </span>
+
+                    <span>
+                        ⭐
+                    </span>
+
+                </div>
+
+                <h2 class="mt-4">
+                    {{ best_stock }}
+                </h2>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ADD FORM + CHART -->
+
+    <div class="row mt-5 g-4">
+
+        <!-- FORM -->
+
+        <div class="col-lg-4">
+
+            <form action="/add" method="POST">
+
+                <h3 class="mb-4">
+                    ➕ Add Stock
+                </h3>
+
+                <!-- STOCK -->
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Stock Symbol
+                    </label>
+
+                    <input
+                        type="text"
+                        name="stock_name"
+                        class="form-control"
+                        placeholder="e.g. AAPL"
+                        required
+                    >
+
+                </div>
+
+                <!-- QUANTITY -->
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Quantity
+                    </label>
+
+                    <input
+                        type="number"
+                        name="quantity"
+                        class="form-control"
+                        placeholder="e.g. 10"
+                        required
+                    >
+
+                </div>
+
+                <!-- BUY PRICE -->
+
+                <div class="mb-4">
+
+                    <label class="form-label">
+                        Buy Price
+                    </label>
+
+                    <input
+                        type="number"
+                        step="0.01"
+                        name="buy_price"
+                        class="form-control"
+                        placeholder="e.g. 180.50"
+                        required
+                    >
+
+                </div>
+
+                <!-- BUTTON -->
+
+                <button type="submit" class="btn btn-primary w-100">
+
+                    ➕ Add Stock
+
+                </button>
+
+            </form>
+
+        </div>
+
+        <!-- CHART -->
+
+        <div class="col-lg-8">
+
+            <div class="chart-card">
+
+                <h3 class="mb-4">
+                    📊 Investment Analysis
+                </h3>
+
+                <canvas id="stockChart"></canvas>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- SEARCH -->
+
+    <div class="mt-5">
+
+        <input
+            type="text"
+            id="searchInput"
+            class="form-control"
+            placeholder="🔍 Search Stock..."
+            onkeyup="searchStock()"
+        >
+
+    </div>
+
+    <!-- TABLE -->
+
+    <div class="table-container mt-4">
+
+        <table class="table text-center align-middle">
+
+            <thead>
+
+                <tr>
+
+                    <th>Stock</th>
+                    <th>Company</th>
+                    <th>Qty</th>
+                    <th>Buy Price</th>
+                    <th>Current Price</th>
+                    <th>Total Value</th>
+                    <th>Profit/Loss</th>
+                    <th>% Change</th>
+                    <th>Action</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+            {% for stock in portfolio %}
+
+                <tr>
+
+                    <!-- STOCK -->
+
+                    <td>
+
+                        <div class="d-flex align-items-center justify-content-center gap-2">
+
+                            <img
+                                src="{{ stock.logo }}"
+                                width="35"
+                                height="35"
+                                style="
+                                    border-radius: 50%;
+                                    background: white;
+                                    padding: 4px;
+                                "
+                            >
+
+                            <strong>
+                                {{ stock.stock_name }}
+                            </strong>
+
+                        </div>
+
+                    </td>
+
+                    <!-- COMPANY -->
+
+                    <td>
+                        {{ stock.company_name }}
+                    </td>
+
+                    <!-- QUANTITY -->
+
+                    <td>
+                        {{ stock.quantity }}
+                    </td>
+
+                    <!-- BUY -->
+
+                    <td>
+                        ${{ stock.buy_price }}
+                    </td>
+
+                    <!-- CURRENT -->
+
+                    <td>
+                        ${{ stock.price }}
+                    </td>
+
+                    <!-- TOTAL -->
+
+                    <td>
+                        ${{ stock.total }}
+                    </td>
+
+                    <!-- PROFIT -->
+
+                    <td>
+
+                        {% if stock.profit_loss >= 0 %}
+
+                            <span class="text-success fw-bold">
+                                +${{ stock.profit_loss }}
+                            </span>
+
+                        {% else %}
+
+                            <span class="text-danger fw-bold">
+                                -${{ stock.profit_loss }}
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+                    <!-- PERCENT -->
+
+                    <td>
+
+                        {% if stock.percentage_change >= 0 %}
+
+                            <span class="text-success fw-bold">
+                                ▲ {{ stock.percentage_change }}%
+                            </span>
+
+                        {% else %}
+
+                            <span class="text-danger fw-bold">
+                                ▼ {{ stock.percentage_change }}%
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+                    <!-- DELETE -->
+
+                    <td>
+
+                        <a href="/delete/{{ stock.id }}" class="btn btn-danger btn-sm">
+                            Delete
+                        </a>
+
+                    </td>
+
+                </tr>
+
+            {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<!-- FOOTER -->
+
+<div class="footer">
+
+    <p>
+        © 2026 Stock Portfolio Tracker | Built with Flask & Python 🚀
+    </p>
+
+</div>
+
+<!-- CHART SCRIPT -->
+
+<script>
+
+    const stockLabels = [
+
+        {% for stock in portfolio %}
+
+            "{{ stock.stock_name }}",
+
+        {% endfor %}
+
+    ];
+
+    const stockValues = [
+
+        {% for stock in portfolio %}
+
+            {{ stock.total }},
+
+        {% endfor %}
+
+    ];
+
+    const ctx = document.getElementById('stockChart');
+
+    new Chart(ctx, {
+
+        type: 'bar',
+
+        data: {
+
+            labels: stockLabels,
+
+            datasets: [{
+
+                label: 'Investment Value ($)',
+
+                data: stockValues,
+
+                backgroundColor: [
+                    '#6366f1',
+                    '#10b981',
+                    '#f59e0b',
+                    '#ef4444',
+                    '#8b5cf6'
+                ],
+
+                borderRadius: 10
+
+            }]
+
+        },
+
+        options: {
+
+            responsive: true,
+
+            plugins: {
+
+                legend: {
+
+                    labels: {
+
+                        color: 'white'
+
+                    }
+
+                }
+
+            },
+
+            scales: {
+
+                y: {
+
+                    beginAtZero: true
+
+                }
+
+            }
+
+        }
+
+    });
+
+    // SEARCH
+
+    function searchStock() {
+
+        let input = document.getElementById("searchInput").value.toUpperCase();
+
+        let table = document.querySelector("table");
+
+        let tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) {
+
+            let td = tr[i].getElementsByTagName("td")[0];
+
+            if (td) {
+
+                let txtValue = td.textContent || td.innerText;
+
+                if (txtValue.toUpperCase().indexOf(input) > -1) {
+
+                    tr[i].style.display = "";
+
+                } else {
+
+                    tr[i].style.display = "none";
+
+                }
+
+            }
+
+        }
+
+    }
+
+    // DARK MODE
+
+    function toggleDarkMode() {
+
+        document.body.classList.toggle("dark-mode");
+
+        localStorage.setItem(
+            "darkMode",
+            document.body.classList.contains("dark-mode")
+        );
+
+    }
+
+    // LOAD DARK MODE
+
+    window.onload = function() {
+
+        if (localStorage.getItem("darkMode") === "true") {
+
+            document.body.classList.add("dark-mode");
+
+        }
+
+    }
+
+</script>
+
+</body>
+
+</html>
